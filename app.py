@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, render_template_from_string
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from PIL import Image, ImageDraw, ImageFont
 import requests
