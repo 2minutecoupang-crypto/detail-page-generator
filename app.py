@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from PIL import Image, ImageDraw, ImageFont
 import requests
-import anthropic
 import io
 import base64
 import os
@@ -540,7 +539,6 @@ def generate():
             return jsonify({'error': 'Anthropic API 키가 없습니다'}), 400
 
         # ── 1. Generate copy ──
-        client = anthropic.Anthropic(api_key=anthropic_key)
         prompt = f"""대한민국 최고의 쿠팡 상세페이지 카피라이터입니다.
 아래 정보로 카피를 작성하고 순수 JSON만 반환하세요.
 
@@ -569,12 +567,23 @@ def generate():
   "bg_prompt": "DALL-E 3 English prompt: beautiful lifestyle background scene for this product, no products visible, soft natural light, bokeh, commercial photography, 4k. Under 50 words."
 }}"""
 
-        msg = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}]
+        resp = requests.post(
+            'https://api.anthropic.com/v1/messages',
+            headers={
+                'x-api-key': anthropic_key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+            },
+            json={
+                'model': 'claude-sonnet-4-20250514',
+                'max_tokens': 2000,
+                'messages': [{'role': 'user', 'content': prompt}]
+            },
+            timeout=60
         )
-        text = msg.content[0].text.strip()
+        if not resp.ok:
+            raise Exception(f'Claude API 오류: {resp.status_code} {resp.text}')
+        text = resp.json()['content'][0]['text'].strip()
         text = text.replace('```json','').replace('```','').strip()
         s = text.find('{'); e = text.rfind('}')
         if s != -1 and e != -1:
